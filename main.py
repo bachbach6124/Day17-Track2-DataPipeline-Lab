@@ -27,13 +27,22 @@ def build_dag(con: duckdb.DuckDBPyConnection) -> DAG:
     def _validate(bronze_df):
         clean, bad = validate(bronze_df)
         n_bad = write_quarantine(bad)
-        return {"clean": clean, "n_quarantined": n_bad}
+        return {
+            "clean": clean,
+            "bronze_rows": len(bronze_df),
+            "n_quarantined": n_bad,
+        }
 
     @dag.task("transform", upstream=["validate"])
     def _transform(v):
         stats = write_silver(con, v["clean"])
         n_gold = write_gold(con)
-        return {**stats, "gold_rows": n_gold, "n_quarantined": v["n_quarantined"]}
+        return {
+            **stats,
+            "bronze_rows": v["bronze_rows"],
+            "gold_rows": n_gold,
+            "n_quarantined": v["n_quarantined"],
+        }
 
     @dag.task("report", upstream=["transform"])
     def _report(t):
@@ -49,7 +58,7 @@ def main() -> dict:
         results = build_dag(con).run()
         stats = results["report"]
         print("=== Day 17 pipeline (lite) ===")
-        print(f"  bronze rows in      : {stats['rows_in']}")
+        print(f"  bronze rows in      : {stats['bronze_rows']}")
         print(f"  duplicates dropped  : {stats['dropped_dupes']}  (Silver dedup)")
         print(f"  records quarantined : {stats['n_quarantined']}  (failed the gate)")
         print(f"  silver rows         : {stats['rows_out']}")

@@ -31,7 +31,7 @@ def check(label, cond):
 def run() -> bool:
     ok = True
     stats = main.main()
-    ok &= check("extract loaded raw rows", stats["rows_in"] > 0)
+    ok &= check("Bronze loaded all 16 raw rows", stats["bronze_rows"] == 16)
     ok &= check("Silver dropped duplicates (the hook)", stats["dropped_dupes"] >= 1)
     ok &= check("gate quarantined bad records", stats["n_quarantined"] == 3)
     ok &= check("Gold produced daily rows", stats["gold_rows"] >= 1)
